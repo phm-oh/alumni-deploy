@@ -1,0 +1,99 @@
+# Alumni Deployment Configuration
+# ไฟล์: alumni-deploy/docker-compose.prod.yml
+# Server IP: 49.231.145.165
+
+version: '3.8'
+
+services:
+  # Alumni Backend Service
+  alumni-backend:
+    image: ghcr.io/phm-oh/alumni-registration-system:latest
+    container_name: alumni-backend
+    ports:
+      - "5000:5000"                    # Alumni backend port (ไม่ชนกับ chatqa 5555)
+    env_file:
+      - .env                           # Load production environment variables
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    restart: unless-stopped
+    networks:
+      - alumni-network
+    volumes:
+      - alumni_uploads:/app/uploads    # Persistent file storage (ถ้าจำเป็น)
+      - alumni_logs:/app/logs          # Persistent logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "project=alumni"
+      - "service=backend"
+      - "environment=production"
+
+  # Alumni Frontend Service
+  alumni-frontend:
+    image: ghcr.io/phm-oh/fontend-alumni:latest
+    container_name: alumni-frontend
+    ports:
+      - "3000:80"                      # Alumni frontend port (ไม่ชนกับ chatqa port 80)
+    environment:
+      # Frontend environment variables (สำหรับ runtime config)
+      - VITE_API_URL=http://49.231.145.165:5000/api
+      - VITE_ENV=production
+    depends_on:
+      alumni-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - alumni-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "project=alumni"
+      - "service=frontend"
+      - "environment=production"
+
+  # Production Nginx Reverse Proxy (Optional - สำหรับ SSL + domain)
+  alumni-nginx:
+    image: nginx:alpine
+    container_name: alumni-nginx
+    ports:
+      - "8080:80"                      # ใช้ port 8080 เพื่อไม่ชนกับ chatqa
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro        # SSL certificates (ถ้าใช้ Let's Encrypt)
+    depends_on:
+      - alumni-frontend
+      - alumni-backend
+    restart: unless-stopped
+    networks:
+      - alumni-network
+    labels:
+      - "project=alumni"
+      - "service=proxy"
+      - "environment=production"
+
+networks:
+  alumni-network:
+    driver: bridge
+    name: alumni-network
+
+volumes:
+  alumni_uploads:
+    driver: local
+    name: alumni_uploads
+  alumni_logs:
+    driver: local
+    name: alumni_logs
+
+# Production deployment commands:
+# 1. docker-compose -f docker-compose.prod.yml pull
+# 2. docker-compose -f docker-compose.prod.yml up -d
+# 3. docker-compose -f docker-compose.prod.yml logs -f
