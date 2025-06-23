@@ -23,7 +23,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s  # เพิ่มเวลา start_period
     labels:
       - "project=alumni"
       - "service=backend"
@@ -33,12 +33,41 @@ services:
   alumni-frontend:
     image: ghcr.io/phm-oh/fontend-alumni:latest
     container_name: alumni-frontend
-    # 🎯 เปลี่ยนจาก 3000 เป็น 3001 เพื่อไม่ให้ user เข้าตрง
     ports:
-      - "3001:80"
+      - "3001:80"  # Internal access port
     environment:
       - VITE_ENV=production
+      # เพิ่ม env vars อื่นๆ ที่อาจจำเป็น
+      - VITE_APP_NAME=Alumni Registration System
+      - VITE_COLLEGE_NAME=Udon Thani Vocational College
     depends_on:
+      alumni-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - alumni-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health || http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "project=alumni"
+      - "service=frontend"
+      - "environment=production"
+
+  # Alumni Nginx Proxy - Main Entry Point
+  alumni-nginx:
+    image: nginx:alpine
+    container_name: alumni-nginx
+    ports:
+      - "3000:80"  # Users access here
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      alumni-frontend:
+        condition: service_healthy
       alumni-backend:
         condition: service_healthy
     restart: unless-stopped
@@ -49,32 +78,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    labels:
-      - "project=alumni"
-      - "service=frontend"
-      - "environment=production"
-
-  # 🎯 Nginx เป็น main entry point
-  alumni-nginx:
-    image: nginx:alpine
-    container_name: alumni-nginx
-    ports:
-      - "3000:80"  # ผู้ใช้เข้าที่ port 3000
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - alumni-frontend
-      - alumni-backend
-    restart: unless-stopped
-    networks:
-      - alumni-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+      start_period: 40s
     labels:
       - "project=alumni"
       - "service=proxy"
@@ -84,6 +88,8 @@ networks:
   alumni-network:
     driver: bridge
     name: alumni-network
+    # เพิ่ม isolation เพื่อไม่ให้ conflict กับ chatqa
+    enable_ipv6: false
 
 volumes:
   alumni_uploads:
