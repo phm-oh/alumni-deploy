@@ -10,12 +10,12 @@ services:
     image: ghcr.io/phm-oh/alumni-registration-system:latest
     container_name: alumni-backend
     ports:
-      - "5000:5000"                    # Alumni backend port (ไม่ชนกับ chatqa 5555)
+      - "5500:5500"                    # แก้เป็น 5500 (เหมือน backend config)
     env_file:
       - .env                           # Load production environment variables
     environment:
       - NODE_ENV=production
-      - PORT=5000
+      - PORT=5500                      # แก้เป็น 5500
     restart: unless-stopped
     networks:
       - alumni-network
@@ -23,7 +23,7 @@ services:
       - alumni_uploads:/app/uploads    # Persistent file storage (ถ้าจำเป็น)
       - alumni_logs:/app/logs          # Persistent logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5500/api/health"]  # แก้เป็น 5500
       interval: 30s
       timeout: 10s
       retries: 3
@@ -38,10 +38,10 @@ services:
     image: ghcr.io/phm-oh/fontend-alumni:latest
     container_name: alumni-frontend
     ports:
-      - "3000:80"                      # Alumni frontend port (ไม่ชนกับ chatqa port 80)
+      - "3000:80"                      # Frontend ยังเป็น 3000 เหมือนเดิม
     environment:
       # Frontend environment variables (สำหรับ runtime config)
-      - VITE_API_URL=http://49.231.145.165:5000/api
+      - VITE_API_URL=http://49.231.145.165:5500/api  # แก้เป็น 5500
       - VITE_ENV=production
     depends_on:
       alumni-backend:

@@ -96,9 +96,9 @@ check_health() {
     # Wait for containers to start
     sleep 30
     
-    # Check backend health
+    # Check backend health (แก้เป็น port 5500)
     print_status "Checking backend health..."
-    if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+    if curl -f http://localhost:5500/api/health > /dev/null 2>&1; then
         print_success "Backend is healthy"
     else
         print_error "Backend health check failed"
@@ -132,7 +132,7 @@ show_status() {
     
     print_status "Network information:"
     echo "Frontend: http://$SERVER_IP:3000"
-    echo "Backend:  http://$SERVER_IP:5000"
+    echo "Backend:  http://$SERVER_IP:5500"  # แก้เป็น 5500
     echo "Nginx:    http://$SERVER_IP:8080 (if enabled)"
     echo "Domain:   https://alumni.udvc.ac.th (when DNS configured)"
 }
