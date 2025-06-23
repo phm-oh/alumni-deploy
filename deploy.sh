@@ -96,7 +96,7 @@ check_health() {
     # Wait for containers to start
     sleep 30
     
-    # Check backend health (แก้เป็น port 5500)
+    # Check backend health
     print_status "Checking backend health..."
     if curl -f http://localhost:5500/api/health > /dev/null 2>&1; then
         print_success "Backend is healthy"
@@ -105,23 +105,21 @@ check_health() {
         return 1
     fi
     
-    # Check frontend health
-    print_status "Checking frontend health..."
+    # Check nginx (main entry point)
+    print_status "Checking nginx proxy health..."
     if curl -f http://localhost:3000/health > /dev/null 2>&1; then
-        print_success "Frontend is healthy"
+        print_success "Nginx proxy is healthy"
     else
-        print_error "Frontend health check failed"
+        print_error "Nginx proxy health check failed"
         return 1
     fi
     
-    # Check nginx (if enabled)
-    if docker-compose -f $COMPOSE_FILE ps | grep -q alumni-nginx; then
-        print_status "Checking nginx health..."
-        if curl -f http://localhost:8080/health > /dev/null 2>&1; then
-            print_success "Nginx is healthy"
-        else
-            print_warning "Nginx health check failed (may be normal)"
-        fi
+    # Check API through nginx
+    print_status "Checking API through nginx..."
+    if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+        print_success "API proxy is working"
+    else
+        print_warning "API proxy may have issues"
     fi
 }
 
@@ -130,11 +128,13 @@ show_status() {
     print_status "Container status:"
     docker-compose -f $COMPOSE_FILE ps
     
-    print_status "Network information:"
-    echo "Frontend: http://$SERVER_IP:3000"
-    echo "Backend:  http://$SERVER_IP:5500"  # แก้เป็น 5500
-    echo "Nginx:    http://$SERVER_IP:8080 (if enabled)"
-    echo "Domain:   https://alumni.udvc.ac.th (when DNS configured)"
+    print_status "🌐 Access URLs:"
+    echo "📱 Frontend (via Nginx): http://$SERVER_IP:3000"
+    echo "🔧 Backend API:          http://$SERVER_IP:5500/api"
+    echo "🔄 API Proxy:            http://$SERVER_IP:3000/api"
+    echo "🏠 Domain:               https://alumni.udvc.ac.th (when DNS configured)"
+    echo ""
+    echo "✅ Users should access: http://$SERVER_IP:3000"
 }
 
 # Function to show logs
